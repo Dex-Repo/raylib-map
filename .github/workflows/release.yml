@@ -47,7 +47,7 @@ jobs:
       - name: Upload package artifact
         uses: actions/upload-artifact@v3
         with:
-          name: package-${{ matrix.os }}
+          name: package-${{ runner.os }}
           path: |
             build/*.dmg
             build/*.zip
