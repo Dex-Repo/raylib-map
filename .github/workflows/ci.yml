@@ -1,0 +1,78 @@
+name: CI Build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential git pkg-config cmake
+          sudo apt-get install -y libgl1-mesa-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev libwayland-dev libxkbcommon-dev
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew update || true
+          brew install cmake pkg-config || true
+
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --yes || true
+          choco install pkgconfiglite --yes || true
+
+      - name: Build and install raylib
+        run: |
+          git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git raylib-src
+          cmake -S raylib-src -B raylib-build -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake --build raylib-build --config Release --parallel
+          cmake --install raylib-build --prefix "$RUNNER_TEMP/raylib-install"
+
+      - name: Configure project
+        shell: bash
+        run: |
+          export PKG_CONFIG_PATH="$RUNNER_TEMP/raylib-install/lib/pkgconfig:$PKG_CONFIG_PATH"
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/raylib-install"
+
+      - name: Build project
+        shell: bash
+        run: |
+          export PKG_CONFIG_PATH="$RUNNER_TEMP/raylib-install/lib/pkgconfig:$PKG_CONFIG_PATH"
+          cmake --build build --config Release --parallel
+
+      - name: Test executable (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          ls -la build/bin/ || ls -la build/
+          file build/bin/rMP* 2>/dev/null || file build/rMP* 2>/dev/null || true
+
+      - name: Test executable (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          Get-ChildItem -Path build\bin -Recurse -ErrorAction SilentlyContinue
+          Get-ChildItem -Path build -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'rMP' }
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          path: |
+            build/bin/**
+            build/rMP*
+          if-no-files-found: warn
