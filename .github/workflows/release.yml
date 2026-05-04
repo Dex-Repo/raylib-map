@@ -1,0 +1,125 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install prerequisites & build raylib
+        run: |
+          set -e
+          echo "Runner: $RUNNER_OS"
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update
+            sudo apt-get install -y build-essential git pkg-config cmake wget
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            brew update || true
+            brew install cmake pkg-config git || true
+          else
+            choco install -y git cmake || true
+          fi
+
+          git clone --depth 1 https://github.com/raysan5/raylib.git raylib-src
+          cmake -S raylib-src -B raylib-build -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake --build raylib-build --config Release --parallel
+          cmake --install raylib-build --prefix "$RUNNER_TEMP/raylib-install"
+
+      - name: Configure and build project
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/raylib-install"
+          cmake --build build --config Release --parallel
+
+      - name: Package (CPack)
+        run: |
+          cd build
+          cmake --build . --config Release --target package || cpack --config CPackConfig.cmake || true
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: package-${{ matrix.os }}
+          path: |
+            build/*.dmg
+            build/*.zip
+            build/*.tar.gz
+            build/*.tgz
+            build/*.AppImage
+            build/*.exe
+
+  create_release:
+    name: Create Release and upload assets
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download macOS package
+        uses: actions/download-artifact@v3
+        with:
+          name: package-macOS
+          path: artifacts/macos
+        continue-on-error: true
+
+      - name: Download Windows package
+        uses: actions/download-artifact@v3
+        with:
+          name: package-Windows
+          path: artifacts/windows
+        continue-on-error: true
+
+      - name: Download Linux package
+        uses: actions/download-artifact@v3
+        with:
+          name: package-Linux
+          path: artifacts/linux
+        continue-on-error: true
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: ${{ github.ref_name }}
+          body: |
+            Rilascio iniziale v0.1.0
+
+      - name: Upload macOS asset (if present)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/macos/*
+          asset_name: "$(basename artifacts/macos/*)"
+          asset_content_type: application/octet-stream
+
+      - name: Upload windows asset (if present)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/windows/*
+          asset_name: "$(basename artifacts/windows/*)"
+          asset_content_type: application/octet-stream
+
+      - name: Upload linux asset (if present)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/linux/*
+          asset_name: "$(basename artifacts/linux/*)"
