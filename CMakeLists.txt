@@ -60,22 +60,27 @@ if(NOT RAYLIB_LINKED)
     set(HB_PREFIX "")
   endif()
 
+  # Include CMAKE_PREFIX_PATH in search paths (for CI builds)
+  set(SEARCH_PREFIXES ${CMAKE_PREFIX_PATH} ${HB_PREFIX} /usr/local /usr)
+
   find_path(RAYLIB_INCLUDE_DIR raylib.h PATHS
-    ${HB_PREFIX}/include
-    ${HB_PREFIX}/opt/raylib/include
-    /usr/local/include
-    /usr/include
+    ${SEARCH_PREFIXES}
+    PATH_SUFFIXES include opt/raylib/include
   )
   find_library(RAYLIB_LIBRARY NAMES raylib PATHS
-    ${HB_PREFIX}/lib
-    /usr/local/lib
-    /usr/lib
+    ${SEARCH_PREFIXES}
+    PATH_SUFFIXES lib opt/raylib/lib
   )
 
   if(RAYLIB_INCLUDE_DIR AND RAYLIB_LIBRARY)
     target_include_directories(${RMP_TARGET} PRIVATE ${RAYLIB_INCLUDE_DIR})
     target_link_libraries(${RMP_TARGET} PRIVATE ${RAYLIB_LIBRARY})
     set(RAYLIB_LINKED TRUE)
+    message(STATUS "Found raylib: ${RAYLIB_INCLUDE_DIR} / ${RAYLIB_LIBRARY}")
+  else()
+    message(STATUS "raylib not found in: ${SEARCH_PREFIXES}")
+    message(STATUS "  Include: ${RAYLIB_INCLUDE_DIR}")
+    message(STATUS "  Library: ${RAYLIB_LIBRARY}")
   endif()
 endif()
 

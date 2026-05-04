@@ -44,17 +44,26 @@ jobs:
           cmake --build raylib-build --config Release --parallel
           cmake --install raylib-build --prefix "$RUNNER_TEMP/raylib-install"
 
-      - name: Configure project
+      - name: Configure project (Unix)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
-          export PKG_CONFIG_PATH="$RUNNER_TEMP/raylib-install/lib/pkgconfig:$PKG_CONFIG_PATH"
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/raylib-install"
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/raylib-install" \
+            -DPKG_CONFIG_EXECUTABLE="" \
+            -DCMAKE_VERBOSE_MAKEFILE=ON
+
+      - name: Configure project (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          export PKG_CONFIG_PATH="$(cygpath -u "$RUNNER_TEMP")/raylib-install/lib/pkgconfig:$PKG_CONFIG_PATH"
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$(cygpath -m "$RUNNER_TEMP")/raylib-install" \
+            -DCMAKE_VERBOSE_MAKEFILE=ON
 
       - name: Build project
-        shell: bash
-        run: |
-          export PKG_CONFIG_PATH="$RUNNER_TEMP/raylib-install/lib/pkgconfig:$PKG_CONFIG_PATH"
-          cmake --build build --config Release --parallel
+        run: cmake --build build --config Release --parallel
 
       - name: Test executable (Linux/macOS)
         if: runner.os != 'Windows'
