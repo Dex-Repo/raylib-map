@@ -1,0 +1,56 @@
+# Build artifacts
+build/
+build-rmp/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+install_manifest.txt
+_CPack_Packages/
+CPackConfig.cmake
+CPackSourceConfig.cmake
+
+# Binaries and packages
+*.app
+*.dmg
+*.exe
+*.msi
+*.zip
+*.tar.gz
+*.tgz
+*.deb
+*.rpm
+rMP
+game
+
+# Object files
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+
+# Generated map/runtime outputs
+my_map.c
+
+# Logs
+*.log
+
+# OS/editor files
+.DS_Store
+.vscode/
+.vs/
+.idea/
+
+# MSVC / Visual Studio artifacts
+*.pdb
+*.ilk
+*.idb
+*.exp
+*.vcxproj.user
+*.sln.docstates
+
+# Misc generated files
+compile_commands.json

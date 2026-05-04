@@ -1,0 +1,2 @@
+// Windows resource file: references logo.ico that should be generated/copied into build directory
+1 ICON "logo.ico"
