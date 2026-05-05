@@ -16,6 +16,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
       - name: Install prerequisites
         shell: bash
@@ -82,6 +84,8 @@ jobs:
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
           name: package-${{ matrix.os }}
           path: |
@@ -102,6 +106,8 @@ jobs:
       - name: Download macOS artifact
         uses: actions/download-artifact@v4
         continue-on-error: true
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
           name: package-macos-latest
           path: artifacts/macos
@@ -109,6 +115,8 @@ jobs:
       - name: Download Linux artifact
         uses: actions/download-artifact@v4
         continue-on-error: true
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
           name: package-ubuntu-latest
           path: artifacts/linux
@@ -116,6 +124,8 @@ jobs:
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         continue-on-error: true
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
           name: package-windows-latest
           path: artifacts/windows
