@@ -98,5 +98,14 @@ Generate icons from `logo.png`
 
 If CMake cannot find raylib, ensure `pkg-config --cflags --libs raylib` works in your shell, or set `CMAKE_PREFIX_PATH` / `PKG_CONFIG_PATH` accordingly.
 
+### Troubleshooting
+**macOS: "App is damaged and can't be opened" / Quarantine error**
+Se scarichi l'app da internet (es. da una Release di GitHub) o dal file `.dmg`, macOS bloccherà l'esecuzione tramite Gatekeeper perché non possiede la firma digitale a pagamento di Apple.
+Per risolvere il problema, dopo aver copiato l'app in Applicazioni, apri il Terminale ed esegui:
+```bash
+sudo xattr -rd com.apple.quarantine /Applications/rMP.app
+```
+*(Questo rimuove l'attributo di quarantena e ti permetterà di avviare il gioco normalmente).*
+
 Contributing
 - Issues and pull-requests are welcome. Please open issues for bugs or feature requests.

@@ -12,6 +12,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
 
@@ -30,10 +32,11 @@ jobs:
             choco install -y git cmake || true
           fi
 
+          TEMP_PATH="${RUNNER_TEMP//\\//}"
           git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git raylib-src
-          cmake -S raylib-src -B raylib-build -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/raylib-install"
+          cmake -S raylib-src -B raylib-build -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$TEMP_PATH/raylib-install"
           cmake --build raylib-build --config Release --parallel
-          cmake --install raylib-build --prefix "$RUNNER_TEMP/raylib-install"
+          cmake --install raylib-build --prefix "$TEMP_PATH/raylib-install"
 
       - name: Configure and build project (Unix)
         if: runner.os != 'Windows'
@@ -76,6 +79,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
 
