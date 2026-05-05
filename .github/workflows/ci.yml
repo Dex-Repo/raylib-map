@@ -40,7 +40,7 @@ jobs:
       - name: Build and install raylib
         run: |
           git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git raylib-src
-          cmake -S raylib-src -B raylib-build -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake -S raylib-src -B raylib-build -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/raylib-install"
           cmake --build raylib-build --config Release --parallel
           cmake --install raylib-build --prefix "$RUNNER_TEMP/raylib-install"
 
