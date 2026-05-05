@@ -88,6 +88,21 @@ if(NOT RAYLIB_LINKED)
   message(FATAL_ERROR "raylib not found. Install raylib and pkg-config or provide CMAKE_PREFIX_PATH. Official repo: https://github.com/raysan5/raylib")
 endif()
 
+# Platform-specific dependencies for Raylib
+if(APPLE)
+    target_link_libraries(${RMP_TARGET} PRIVATE
+        "-framework CoreVideo"
+        "-framework IOKit"
+        "-framework Cocoa"
+        "-framework GLUT"
+        "-framework OpenGL"
+    )
+elseif(WIN32)
+    target_link_libraries(${RMP_TARGET} PRIVATE winmm gdi32 opengl32 shell32)
+else() # Linux / UNIX
+    target_link_libraries(${RMP_TARGET} PRIVATE m pthread dl rt X11 GL)
+endif()
+
 set_target_properties(${RMP_TARGET} PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
