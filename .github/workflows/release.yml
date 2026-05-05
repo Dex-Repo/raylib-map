@@ -12,12 +12,11 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
 
       - name: Install prerequisites & build raylib
+        shell: bash
         run: |
           set -e
           echo "Runner: $RUNNER_OS"
@@ -26,8 +25,10 @@ jobs:
             sudo apt-get install -y build-essential git pkg-config cmake wget
             sudo apt-get install -y libgl1-mesa-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev libwayland-dev libxkbcommon-dev
           elif [ "$RUNNER_OS" = "macOS" ]; then
-            brew update || true
-            brew install cmake pkg-config git || true
+            brew update > /dev/null 2>&1 || true
+            for pkg in cmake pkg-config git; do
+              brew list --versions $pkg > /dev/null 2>&1 || brew install $pkg > /dev/null 2>&1 || true
+            done
           else
             choco install -y git cmake || true
           fi
@@ -56,9 +57,10 @@ jobs:
           cmake --build build --config Release --parallel
 
       - name: Package (CPack)
+        shell: bash
         run: |
           cd build
-          cmake --build . --config Release --target package || cpack --config CPackConfig.cmake || true
+          cpack -C Release
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
@@ -79,8 +81,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
 

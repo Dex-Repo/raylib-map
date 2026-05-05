@@ -14,8 +14,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - uses: actions/checkout@v4
@@ -30,8 +28,10 @@ jobs:
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew update || true
-          brew install cmake pkg-config || true
+          brew update > /dev/null 2>&1 || true
+          for pkg in cmake pkg-config; do
+            brew list --versions $pkg > /dev/null 2>&1 || brew install $pkg > /dev/null 2>&1 || true
+          done
 
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
