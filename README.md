@@ -100,12 +100,12 @@ If CMake cannot find raylib, ensure `pkg-config --cflags --libs raylib` works in
 
 ### Troubleshooting
 **macOS: "App is damaged and can't be opened" / Quarantine error**
-Se scarichi l'app da internet (es. da una Release di GitHub) o dal file `.dmg`, macOS bloccherà l'esecuzione tramite Gatekeeper perché non possiede la firma digitale a pagamento di Apple.
-Per risolvere il problema, dopo aver copiato l'app in Applicazioni, apri il Terminale ed esegui:
+If you download the app from the internet (e.g., from a GitHub release) or from a `.dmg` file, macOS will block execution via Gatekeeper because it doesn't have Apple's paid digital signature.
+To resolve this issue, after copying the app to Applications, open Terminal and run:
 ```bash
 sudo xattr -rd com.apple.quarantine /Applications/rMP.app
 ```
-*(Questo rimuove l'attributo di quarantena e ti permetterà di avviare il gioco normalmente).*
+*(This removes the quarantine attribute and allows you to run the game normally)*.
 
 Contributing
 - Issues and pull-requests are welcome. Please open issues for bugs or feature requests.

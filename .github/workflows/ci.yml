@@ -3,8 +3,18 @@ name: CI Build
 on:
   push:
     branches: [main, master]
+    paths:
+      - '**.c'
+      - '**.h'
+      - 'CMakeLists.txt'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main, master]
+    paths:
+      - '**.c'
+      - '**.h'
+      - 'CMakeLists.txt'
+      - '.github/workflows/ci.yml'
 
 jobs:
   build:
@@ -35,9 +45,10 @@ jobs:
 
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --yes || true
-          choco install pkgconfiglite --yes || true
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --yes --no-progress | Out-Null
+          choco install pkgconfiglite --yes --no-progress | Out-Null
 
       - name: Build and install raylib
         shell: bash
@@ -54,17 +65,16 @@ jobs:
         run: |
           export PKG_CONFIG_PATH="$RUNNER_TEMP/raylib-install/lib/pkgconfig:$PKG_CONFIG_PATH"
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/raylib-install" \
-            -DCMAKE_VERBOSE_MAKEFILE=ON
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/raylib-install"
 
       - name: Configure project (Windows)
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          export PKG_CONFIG_PATH="$(cygpath -u "$RUNNER_TEMP")/raylib-install/lib/pkgconfig:$PKG_CONFIG_PATH"
+          TEMP_PATH="${RUNNER_TEMP//\\//}"
+          export PKG_CONFIG_PATH="$TEMP_PATH/raylib-install/lib/pkgconfig:$PKG_CONFIG_PATH"
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="$(cygpath -m "$RUNNER_TEMP")/raylib-install" \
-            -DCMAKE_VERBOSE_MAKEFILE=ON
+            -DCMAKE_PREFIX_PATH="$TEMP_PATH/raylib-install"
 
       - name: Build project
         run: cmake --build build --config Release --parallel
@@ -77,15 +87,7 @@ jobs:
 
       - name: Test executable (Windows)
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
           Get-ChildItem -Path build\bin -Recurse -ErrorAction SilentlyContinue
           Get-ChildItem -Path build -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'rMP' }
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-${{ matrix.os }}
-          path: |
-            build/bin/**
-            build/rMP*
-          if-no-files-found: warn

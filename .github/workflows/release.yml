@@ -10,57 +10,75 @@ jobs:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install prerequisites & build raylib
+      - name: Install prerequisites
         shell: bash
         run: |
-          set -e
-          echo "Runner: $RUNNER_OS"
           if [ "$RUNNER_OS" = "Linux" ]; then
             sudo apt-get update
-            sudo apt-get install -y build-essential git pkg-config cmake wget
+            sudo apt-get install -y build-essential git pkg-config cmake
             sudo apt-get install -y libgl1-mesa-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev libwayland-dev libxkbcommon-dev
           elif [ "$RUNNER_OS" = "macOS" ]; then
             brew update > /dev/null 2>&1 || true
             for pkg in cmake pkg-config git; do
               brew list --versions $pkg > /dev/null 2>&1 || brew install $pkg > /dev/null 2>&1 || true
             done
-          else
-            choco install -y git cmake || true
           fi
 
+      - name: Install prerequisites (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --yes --no-progress | Out-Null
+          choco install pkgconfiglite --yes --no-progress | Out-Null
+
+      - name: Build and install raylib
+        shell: bash
+        run: |
           TEMP_PATH="${RUNNER_TEMP//\\//}"
           git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git raylib-src
-          cmake -S raylib-src -B raylib-build -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$TEMP_PATH/raylib-install"
+          cmake -S raylib-src -B raylib-build \
+            -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$TEMP_PATH/raylib-install"
           cmake --build raylib-build --config Release --parallel
           cmake --install raylib-build --prefix "$TEMP_PATH/raylib-install"
 
-      - name: Configure and build project (Unix)
+      - name: Configure and build (Unix)
         if: runner.os != 'Windows'
+        shell: bash
         run: |
           export PKG_CONFIG_PATH="$RUNNER_TEMP/raylib-install/lib/pkgconfig:$PKG_CONFIG_PATH"
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/raylib-install"
           cmake --build build --config Release --parallel
 
-      - name: Configure and build project (Windows)
+      - name: Configure and build (Windows)
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          export PKG_CONFIG_PATH="$(cygpath -u "$RUNNER_TEMP")/raylib-install/lib/pkgconfig:$PKG_CONFIG_PATH"
+          TEMP_PATH="${RUNNER_TEMP//\\//}"
+          export PKG_CONFIG_PATH="$TEMP_PATH/raylib-install/lib/pkgconfig:$PKG_CONFIG_PATH"
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="$(cygpath -m "$RUNNER_TEMP")/raylib-install"
+            -DCMAKE_PREFIX_PATH="$TEMP_PATH/raylib-install"
           cmake --build build --config Release --parallel
 
       - name: Package (CPack)
         shell: bash
         run: |
           cd build
-          cpack -C Release
+          # Use only ZIP on Windows (NSIS not available), DragNDrop on macOS, TGZ on Linux
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cpack -C Release -G ZIP
+          else
+            cpack -C Release
+          fi
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
@@ -71,19 +89,16 @@ jobs:
             build/*.zip
             build/*.tar.gz
             build/*.tgz
-            build/*.AppImage
-            build/*.exe
-          if-no-files-found: ignore
+          if-no-files-found: warn
 
   create_release:
-    name: Create Release and upload assets
+    name: Publish GitHub Release
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    steps:
-      - uses: actions/checkout@v4
 
+    steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -91,23 +106,29 @@ jobs:
           merge-multiple: false
 
       - name: List artifacts
-        run: |
-          find artifacts -type f -ls 2>/dev/null || echo "No artifacts found"
+        run: find artifacts -type f | sort
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release with assets
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
           body: |
-            Release ${{ github.ref_name }}
+            ## raylib-map ${{ github.ref_name }}
 
-            ## Packages
-            - macOS: .dmg bundle
-            - Windows: .zip with .exe
-            - Linux: .tar.gz binary
+            ### Downloads
+            | Platform | File |
+            |----------|------|
+            | 🍎 macOS | `.dmg` – drag `rMP.app` into Applications |
+            | 🪟 Windows | `.zip` – extract and run `rMP.exe` |
+            | 🐧 Linux | `.tar.gz` – extract and run `rMP` |
+
+            > **macOS note:** If the app is blocked by Gatekeeper, open Terminal and run:
+            > ```bash
+            > sudo xattr -rd com.apple.quarantine /Applications/rMP.app
+            > ```
           files: |
             artifacts/**/*.dmg
             artifacts/**/*.zip
             artifacts/**/*.tar.gz
             artifacts/**/*.tgz
-            artifacts/**/*.exe
+          fail_on_unmatched_files: false
